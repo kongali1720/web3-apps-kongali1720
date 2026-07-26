@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/kongali1720/KongWallet-Payment-Gateway-API/blob/main/kop_surat.jpg" width="100%" alt="Header">
+  <img src="https://github.com/kongali1720/KongWallet-Payment-Gateway-API/blob/main/kop_surat.jpg" width="70%" alt="Header">
 </p>
 
 <div align="center">
@@ -95,6 +95,18 @@ web3-apps-kongali1720/
     │   └── security.yml
     └── FUNDING.yml
 ```
+
+---
+
+<div align="center">
+
+## 📸 Application Preview
+
+<img src="https://raw.githubusercontent.com/kongali1720/web3-apps-kongali1720/main/dashboard.jpg" alt="Web3 Apps Dashboard" width="70%">
+
+**Modern Web3 Storage DApp Dashboard built with Solidity, Hardhat, Ethers.js, JavaScript, Docker, and WSL2.**
+
+</div>
 
 ---
 
