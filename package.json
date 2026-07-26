@@ -1,0 +1,28 @@
+{
+  "name": "web3-apps-kongali1720",
+  "version": "1.0.0",
+  "description": "Web3 Vault DApp by kongali1720",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "deploy": "npx hardhat run scripts/deploy.js --network sepolia",
+    "deploy-local": "npx hardhat run scripts/deploy.js --network localhost",
+    "deploy-ignition": "npx hardhat ignition deploy ignition/modules/SimpleStorage.js --network localhost",
+    "node": "npx hardhat node",
+    "frontend": "cd frontend && python3 -m http.server 3000",
+    "clean": "npx hardhat clean",
+    "console": "npx hardhat console"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ignition": "^0.15.0",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.19.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.8.0"
+  },
+  "author": "kongali1720",
+  "license": "MIT"
+}
