@@ -1,14 +1,15 @@
 // Web3 Apps - kongali1720
-// Configuration - GANTI dengan address setelah deploy!
 const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 const ABI = [
   "function get() public view returns (uint256)",
   "function set(uint256 _value) public",
   "function reset() public",
-  "function owner() public view returns (address)"
+  "function owner() public view returns (address)",
+  "event ValueStored(address indexed storer, uint256 value)",
+  "event ValueReset(address indexed reseter)"
 ];
 
-// DOM references
+// DOM refs
 const walletSpan = document.getElementById('walletAddress');
 const connectBtn = document.getElementById('connectBtn');
 const contractAddressSpan = document.getElementById('contractAddress');
@@ -21,13 +22,13 @@ const getBtn = document.getElementById('getBtn');
 const resetBtn = document.getElementById('resetBtn');
 const activityLog = document.getElementById('activityLog');
 
-// State
 let signer = null;
 let contract = null;
 let currentAccount = null;
 let provider = null;
+let isConnecting = false;
+let isConnected = false;
 
-// Helper: log activity
 function addActivity(message, icon = 'fa-circle-check') {
   const entry = document.createElement('div');
   entry.className = 'log-entry';
@@ -38,7 +39,6 @@ function addActivity(message, icon = 'fa-circle-check') {
   }
 }
 
-// Update stored value
 async function updateStoredValue() {
   if (!contract) {
     storedValueDiv.textContent = '⛓️';
@@ -53,7 +53,6 @@ async function updateStoredValue() {
   }
 }
 
-// Update owner status
 async function updateOwnerStatus(account) {
   if (!contract || !account) {
     isOwnerSpan.innerHTML = '<i class="fas fa-circle" style="color:#7a7f9f;"></i> unknown';
@@ -63,52 +62,110 @@ async function updateOwnerStatus(account) {
     const owner = await contract.owner();
     const isOwner = owner.toLowerCase() === account.toLowerCase();
     isOwnerSpan.innerHTML = isOwner
-      ? '<i class="fas fa-check-circle" style="color:#4cdb7b;"></i> owner'
-      : '<i class="fas fa-user" style="color:#aab9f0;"></i> user';
+      ? '<i class="fas fa-check-circle" style="color:#4cdb7b;"></i> Owner ✅'
+      : '<i class="fas fa-user" style="color:#aab9f0;"></i> User';
+    console.log('Owner:', owner, 'Current:', account, 'Is Owner:', isOwner);
   } catch (e) {
-    isOwnerSpan.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#e68a5f;"></i> error';
+    console.error('Owner check error:', e);
+    isOwnerSpan.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#e68a5f;"></i> Error';
   }
 }
 
-// Connect wallet
 async function connectWallet() {
+  if (isConnecting) {
+    console.log('⏳ Already connecting...');
+    return;
+  }
+  
+  if (isConnected) {
+    console.log('✅ Already connected');
+    return;
+  }
+  
   if (typeof window.ethereum === 'undefined') {
     alert('🦊 MetaMask not detected! Please install it.');
     return;
   }
 
   try {
+    isConnecting = true;
+    connectBtn.disabled = true;
+    connectBtn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Connecting...';
+    
     provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = await provider.getSigner();
-    currentAccount = await signer.getAddress();
+    
+    try {
+      const accounts = await provider.listAccounts();
+      if (accounts.length > 0) {
+        signer = await provider.getSigner();
+        currentAccount = await signer.getAddress();
+      } else {
+        await provider.send("eth_requestAccounts", []);
+        signer = await provider.getSigner();
+        currentAccount = await signer.getAddress();
+      }
+    } catch (pendingError) {
+      if (pendingError.code === -32002) {
+        alert('⚠️ Please open MetaMask and complete or reject the pending request.');
+        isConnecting = false;
+        connectBtn.disabled = false;
+        connectBtn.innerHTML = '<i class="fas fa-plug"></i> Connect';
+        return;
+      }
+      throw pendingError;
+    }
 
     walletSpan.innerHTML = `<i class="fas fa-circle" style="color:#4cdb7b; font-size:0.5rem; margin-right:6px;"></i> ${currentAccount.slice(0,6)}...${currentAccount.slice(-4)}`;
     connectBtn.innerHTML = '<i class="fas fa-link"></i> Connected';
+    isConnected = true;
 
     contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
     contractAddressSpan.textContent = CONTRACT_ADDRESS.slice(0,8)+'...'+CONTRACT_ADDRESS.slice(-6);
 
     const network = await provider.getNetwork();
     const chainId = network.chainId;
-    let netName = 'Sepolia';
-    if (chainId === 1n) netName = 'Ethereum';
-    else if (chainId === 11155111n) netName = 'Sepolia';
-    else if (chainId === 5n) netName = 'Goerli';
-    else if (chainId === 1337n || chainId === 31337n) netName = 'Localhost';
-    else netName = `chain ${chainId}`;
-    networkSpan.innerHTML = `<i class="fas fa-check-circle" style="color:#3ccf7e; margin-right:4px;"></i> ${netName}`;
+    let netName = '';
+    let netIcon = '';
+    
+    if (chainId === 1n) {
+      netName = 'Ethereum Mainnet';
+      netIcon = '🔵';
+    } else if (chainId === 11155111n) {
+      netName = 'Sepolia Testnet';
+      netIcon = '🧪';
+    } else if (chainId === 5n) {
+      netName = 'Goerli Testnet';
+      netIcon = '🧪';
+    } else if (chainId === 1337n || chainId === 31337n) {
+      netName = 'Localhost ⚡';
+      netIcon = '🏠';
+    } else {
+      netName = `Chain ${chainId}`;
+      netIcon = '⛓️';
+    }
+    
+    networkSpan.innerHTML = `<i class="fas fa-check-circle" style="color:#3ccf7e; margin-right:4px;"></i> ${netIcon} ${netName}`;
 
     await updateOwnerStatus(currentAccount);
     await updateStoredValue();
-    addActivity(`Connected · ${currentAccount.slice(0,6)}...${currentAccount.slice(-4)}`, 'fa-plug');
+    addActivity(`✅ Connected · ${currentAccount.slice(0,6)}...${currentAccount.slice(-4)}`, 'fa-plug');
+    
   } catch (err) {
-    console.error(err);
-    alert('Connection failed: ' + err.message);
+    console.error('Connection error:', err);
+    if (err.code === -32002) {
+      alert('⚠️ Please open MetaMask and complete or reject the pending request.');
+    } else {
+      alert('Connection failed: ' + err.message);
+    }
+  } finally {
+    isConnecting = false;
+    connectBtn.disabled = false;
+    if (!isConnected) {
+      connectBtn.innerHTML = '<i class="fas fa-plug"></i> Connect';
+    }
   }
 }
 
-// Set value
 async function setValue() {
   if (!contract || !signer) {
     alert('Connect wallet first!');
@@ -137,7 +194,6 @@ async function setValue() {
   }
 }
 
-// Get value
 async function getValue() {
   if (!contract) {
     alert('Connect wallet first.');
@@ -151,7 +207,6 @@ async function getValue() {
   }
 }
 
-// Reset contract
 async function resetContract() {
   if (!contract || !signer) {
     alert('Connect wallet first.');
@@ -167,40 +222,45 @@ async function resetContract() {
     await updateStoredValue();
   } catch (e) {
     console.error(e);
-    addActivity(`❌ Reset failed: ${e.message.slice(0,50)}`, 'fa-circle-xmark');
+    if (e.message.includes('Only owner can reset')) {
+      addActivity('❌ Only owner can reset!', 'fa-circle-xmark');
+      alert('⚠️ Only contract owner can reset!');
+    } else {
+      addActivity(`❌ Reset failed: ${e.message.slice(0,50)}`, 'fa-circle-xmark');
+    }
   } finally {
     resetBtn.disabled = false;
     resetBtn.innerHTML = '<i class="fas fa-undo-alt"></i> Reset';
   }
 }
 
-// Event listeners
 connectBtn.addEventListener('click', connectWallet);
 setBtn.addEventListener('click', setValue);
 getBtn.addEventListener('click', getValue);
 resetBtn.addEventListener('click', resetContract);
 
-// Auto connect
 window.addEventListener('load', async () => {
+  contractAddressSpan.textContent = CONTRACT_ADDRESS.slice(0,8)+'...'+CONTRACT_ADDRESS.slice(-6);
+  
   if (typeof window.ethereum !== 'undefined') {
     try {
       provider = new ethers.BrowserProvider(window.ethereum);
       const accounts = await provider.listAccounts();
       if (accounts.length > 0) {
         await connectWallet();
-      } else {
-        contractAddressSpan.textContent = CONTRACT_ADDRESS.slice(0,8)+'...'+CONTRACT_ADDRESS.slice(-6);
       }
-    } catch (e) { /* silent */ }
+    } catch (e) {
+      console.log('Auto-connect skipped:', e.message);
+    }
   } else {
     contractAddressSpan.textContent = '🦊 install MetaMask';
   }
 });
 
-// Account/chain changes
 if (window.ethereum) {
   window.ethereum.on('accountsChanged', (accounts) => {
     if (accounts.length === 0) {
+      isConnected = false;
       currentAccount = null;
       signer = null;
       contract = null;
@@ -218,5 +278,3 @@ if (window.ethereum) {
     window.location.reload();
   });
 }
-
-contractAddressSpan.textContent = CONTRACT_ADDRESS.slice(0,8)+'...'+CONTRACT_ADDRESS.slice(-6);
